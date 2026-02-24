@@ -3,13 +3,13 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 1. 網頁基本設定
-st.set_page_config(page_title="ALLDAY PROJECT 進階戰報", layout="wide")
+st.set_page_config(page_title="ALLDAY PROJECT 實時cut數據", layout="wide")
 
-st.title("🏆 ALLDAY PROJECT 實時銷量排行榜")
+st.title("ALLDAY PROJECT 單筆購買量排名")
 st.markdown("---")
 
 # 2. 建立連線 (請確認你的試算表已開啟「知道連結的人皆可檢視」)
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1XyLh6N00m6B1Q6eS7E0D2p-G3o8Zf6P8/edit#gid=0" # 請確認此處為你的網址
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1cVlCR18b9wzYBwBswPB3E9A_sy4nNZ2BVAkF4Db5g_c/edit?usp=sharing" # 請確認此處為你的網址
 
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -73,3 +73,4 @@ except Exception as e:
 
 # 底部提示
 st.caption("提示：數據每分鐘隨 GAS 自動更新，手動重新整理網頁可獲取最新排名。")
+
