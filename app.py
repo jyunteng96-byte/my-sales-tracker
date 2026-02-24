@@ -5,7 +5,7 @@ from streamlit_gsheets import GSheetsConnection
 # 1. 網頁基本設定
 st.set_page_config(page_title="ALLDAY PROJECT 實時cut數據", layout="wide")
 
-st.title("ALLDAY PROJECT 單筆購買量排名")
+st.title("ALLDAY PROJECT 實時cut數據")
 st.markdown("---")
 
 # 2. 建立連線 (請確認你的試算表已開啟「知道連結的人皆可檢視」)
@@ -21,16 +21,16 @@ try:
         last_data = df.iloc[-1]
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric(label="🔥 當前總銷量", value=int(last_data['總銷量']), delta=int(last_data['差值']))
+            st.metric(label="當前總銷量", value=int(last_data['總銷量']), delta=int(last_data['差值']))
         with col2:
-            st.metric(label="📦 剩餘總庫存", value=int(last_data['總庫存']))
+            st.metric(label="剩餘總庫存", value=int(last_data['總庫存']))
         with col3:
-            st.metric(label="🕒 最後更新時間", value=str(last_data['時刻']).split(" ")[-1])
+            st.metric(label="最後更新時間", value=str(last_data['時刻']).split(" ")[-1])
 
         st.divider()
 
         # --- B. 進階排名邏輯 ---
-        st.subheader("🥇 銷量增長排名 (已過濾買退抵銷)")
+        st.subheader("銷量增長排名 (已過濾買退抵銷)")
 
         # 1. 複製原始數據進行處理
         rank_df = df.copy()
@@ -73,4 +73,5 @@ except Exception as e:
 
 # 底部提示
 st.caption("提示：數據每分鐘隨 GAS 自動更新，手動重新整理網頁可獲取最新排名。")
+
 
