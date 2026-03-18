@@ -3,8 +3,8 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 網頁設定
-st.set_page_config(page_title="合照實時cut", layout="centered")
-st.title("K-MONSTAR合照實時cut")
+st.set_page_config(page_title="崔立于合照實時cut", layout="centered")
+st.title("崔立于合照實時cut")
 
 # 1. 建立連線
 try:
