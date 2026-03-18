@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 網頁基本設定
-st.set_page_config(page_title="K-MONSTAR實時cut", layout="centered")
+st.set_page_config(page_title="崔立于簽售實時cut", layout="centered")
 
 # 1. 建立連線
 try:
