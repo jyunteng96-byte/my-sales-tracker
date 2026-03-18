@@ -39,11 +39,11 @@ if not df.empty:
     # --- 站點標註邏輯 ---
     def get_source(row):
         if row['台灣差值'] > 0 and row['國外差值'] > 0: return "雙站合計"
-        elif row['台灣差值'] > 0: return "台灣"
-        elif row['國外差值'] > 0: return "國際"
+        elif row['台灣差值'] > 0: return "台灣站"
+        elif row['國外差值'] > 0: return "國際站"
         return "無變動"
 
-    clean_df['網站'] = clean_df.apply(get_source, axis=1)
+    clean_df['站點備註'] = clean_df.apply(get_source, axis=1)
 
     # --- A. 上方看板 (總銷量 & 更新時間) ---
     latest = df.iloc[-1]
@@ -56,7 +56,7 @@ if not df.empty:
     st.divider()
 
     # --- B. 極簡排行榜 ---
-    st.subheader("每筆訂單")
+    st.subheader("每筆成交衝刺榜")
     # 篩選掉 0 的成交，按銷量排序取前 15 名
     rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(15)
 
