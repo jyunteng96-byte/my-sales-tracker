@@ -1,45 +1,78 @@
 import streamlit as st
 import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 
 # 1. 網頁基本設定
-st.set_page_config(page_title="ALLDAY PROJECT 結案報告", layout="wide")
+st.set_page_config(page_title="K-MONSTAR 雙站即時戰報", layout="wide")
 
-st.title("ALLDAY PROJECT 活動結案")
-st.success("本次活動已結束")
-st.divider()
+# 2. 標題與風格
+st.title("🏆 K-MONSTAR 應募銷量排行榜")
+st.caption("同步追蹤台灣與國際站數據 | 有成交變動時自動更新")
 
-# 2. 【核心修改】將最終數據直接寫死在程式碼中
-# 請根據你目前網頁上的最後顯示數值，填入下方的資料
-final_total_sales = 192  # 填入最終總銷量
-final_stock = 999808     # 填入最終剩餘庫存
-final_update_time = "2026/02/24 11:32:30" # 填入最後更新時間
+# 3. 建立試算表連線
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    # ttl=0 確保每次重新整理都會抓取最新數據，不使用快取
+    df = conn.read(ttl=0) 
+except Exception as e:
+    st.error(f"連線試算表失敗，請檢查 Secrets 設定。錯誤訊息: {e}")
+    st.stop()
 
-# 3. 顯示大數字看板 (不再讀取試算表)
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric(label="最終總銷量", value=final_total_sales)
-with col2:
-    st.metric(label="剩餘總庫存", value=final_stock)
-with col3:
-    st.metric(label="活動結束時間", value=final_update_time)
+if not df.empty:
+    # 確保數值欄位格式正確，避免運算錯誤
+    numeric_cols = ['台灣總銷量', '台灣差值', '國外總銷量', '國外差值', '總銷量(累積)', '每筆銷量(本次)']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
+    # 取得最新一筆數據（最後一行）
+    latest = df.iloc[-1]
+    
+    # --- A. 上方大數字看板 ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("🔥 總累計銷量", f"{int(latest['總銷量(累積)'])} 本")
+    with col2:
+        # 顯示台灣總銷，並標註本次增加了多少
+        st.metric("🇹🇼 台灣站累計", f"{int(latest['台灣總銷量'])} 本", f"+{int(latest['台灣差值'])}")
+    with col3:
+        # 顯示國外總銷，並標註本次增加了多少
+        st.metric("🌐 國際站累計", f"{int(latest['國外總銷量'])} 本", f"+{int(latest['國外差值'])}")
 
-st.divider()
+    st.divider()
 
-# 4. 如果你想保留排行榜數據，建議手動輸入前幾名
-st.subheader("銷量衝刺排行榜")
+    # --- B. 銷量衝刺排行榜 (依據「每筆銷量」排序) ---
+    st.subheader("🥇 每筆成交衝刺榜 (Top 10)")
+    st.write("以下為單次抓取中，兩站合計增加最多的成交紀錄：")
 
-# 這裡建議你直接把網頁上現在的前 10 名數據手動打進去
-ranking_data = {
-    "排名": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    "更新時間": [
-        "2026/02/24 09:45:30", "2026/02/24 09:49:29", "2026/02/24 11:32:30",
-        "2026/02/24 10:06:29", "2026/02/24 10:39:30", "2026/02/24 10:26:30",
-        "2026/02/24 10:48:29", "2026/02/24 10:30:30", "2026/02/24 09:48:29", "2026/02/24 09:50:30"
-    ],
-    "增長量": ["+5", "+5", "+5", "+5", "+1", "+1", "+1", "+1", "+-5", "+-5"]
-}
+    # 邏輯：排除掉差值為 0 的紀錄，並按「每筆銷量(本次)」從大到小排序
+    if '每筆銷量(本次)' in df.columns:
+        rank_df = df[df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(10)
+        
+        if not rank_df.empty:
+            # 整理要顯示的欄位名
+            display_df = rank_df[['時刻', '台灣差值', '國外差值', '每筆銷量(本次)']].copy()
+            display_df.columns = ['成交時間', '台灣增加', '國外增加', '該筆合計銷量']
+            
+            # 加上名次裝飾
+            medals = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10']
+            display_df.insert(0, '排名', medals[:len(display_df)])
+            
+            # 使用 table 顯示
+            st.table(display_df.set_index('排名'))
+        else:
+            st.info("目前尚未偵測到任何銷量增加的紀錄。")
+    
+    st.divider()
 
-df_static = pd.DataFrame(ranking_data)
-st.table(df_static) # 使用靜態表格顯示，看起來更像報告
+    # --- C. 完整數據時間軸 ---
+    with st.expander("📂 查看完整歷史成交紀錄"):
+        # 按時間倒序排列（最新的在上面）
+        st.dataframe(df.sort_values(by='時刻', ascending=False), use_container_width=True)
 
-st.caption("本頁面為歷史紀錄，數據不再更新。")
+else:
+    st.warning("💡 試算表目前是空的。請先在 Google Apps Script 執行一次抓取，或檢查試算表權限！")
+
+# 頁面底部自動重新整理按鈕
+if st.button('🔄 立即更新數據'):
+    st.rerun()
