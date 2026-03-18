@@ -47,7 +47,7 @@ if not df.empty:
 
     # --- A. 上方看板 (總銷量 & 更新時間) ---
     latest = df.iloc[-1]
-    st.title("K-MONSTAR實時cut")
+    st.title("崔立于簽售實時cut")
     
     c1, c2 = st.columns(2)
     c1.metric("當前總銷量", f"{int(latest['總銷量(累積)'])} 本")
