@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-st.set_page_config(page_title="K-MONSTAR 實時cut", layout="centered")
-st.title("K-MONSTAR 實時cut ")
+# 網頁基本設定
+st.set_page_config(page_title="K-MONSTAR實時cut", layout="centered")
 
-# 連線試算表
+# 1. 建立連線
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(ttl=0)
@@ -14,8 +14,9 @@ except Exception as e:
     st.stop()
 
 if not df.empty:
-    # 轉換數值
-    for col in ['台灣差值', '國外差值', '每筆銷量(本次)']:
+    # 數值轉換
+    numeric_cols = ['台灣差值', '國外差值', '每筆銷量(本次)', '總銷量(累積)']
+    for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
@@ -35,33 +36,39 @@ if not df.empty:
 
     clean_df = df.loc[valid_indices].copy()
 
-    # --- 整理極簡排行榜 ---
-    # 1. 判斷來源
+    # --- 站點標註邏輯 ---
     def get_source(row):
-        if row['台灣差值'] > 0 and row['國外差值'] > 0: return "雙站同時"
+        if row['台灣差值'] > 0 and row['國外差值'] > 0: return "雙站合計"
         elif row['台灣差值'] > 0: return "台灣"
         elif row['國外差值'] > 0: return "國際"
         return "無變動"
 
-    clean_df['來源備註'] = clean_df.apply(get_source, axis=1)
+    clean_df['網站'] = clean_df.apply(get_source, axis=1)
+
+    # --- A. 上方看板 (總銷量 & 更新時間) ---
+    latest = df.iloc[-1]
+    st.title("K-MONSTAR實時cut")
     
-    # 2. 篩選有成交的紀錄並排序
+    c1, c2 = st.columns(2)
+    c1.metric("當前總銷量", f"{int(latest['總銷量(累積)'])} 本")
+    c2.metric("最近更新時間", str(latest['時刻']).split(".")[0]) # 只取到秒
+
+    st.divider()
+
+    # --- B. 極簡排行榜 ---
+    st.subheader("每筆訂單")
+    # 篩選掉 0 的成交，按銷量排序取前 15 名
     rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(15)
 
     if not rank_df.empty:
-        # 只保留你要的：時間、每筆銷量、來源備註
-        final_display = rank_df[['時刻', '每筆銷量(本次)', '來源備註']]
-        final_display.columns = ['成交時間', '銷售數量', '站點備註']
+        # 只保留你要的欄位
+        final_table = rank_df[['時刻', '每筆銷量(本次)', '站點備註']]
+        final_table.columns = ['成交時間', '銷售數量', '來源']
         
         # 顯示表格
-        st.table(final_display)
+        st.table(final_table)
     else:
-        st.info("目前尚無有效成交紀錄。")
-
-    st.divider()
-    # 底部顯示一個小總計就好
-    latest = df.iloc[-1]
-    st.caption(f"最後更新：{latest['時刻']} | 目前兩站總計：{int(latest['總銷量(累積)'])} 本")
+        st.info("目前尚無有效成交紀錄，等待數據寫入中...")
 
 else:
-    st.warning("試算表目前無數據。")
+    st.warning("試算表目前是空的。")
