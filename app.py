@@ -56,7 +56,7 @@ if not df.empty:
     st.divider()
 
     # --- B. 極簡排行榜 ---
-    st.subheader("每筆成交衝刺榜")
+    st.subheader("每筆訂單")
     # 篩選掉 0 的成交，按銷量排序取前 15 名
     rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(15)
 
