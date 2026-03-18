@@ -39,7 +39,7 @@ if not df.empty:
     st.divider()
 
     # --- 顯示極簡排行榜 ---
-    st.subheader("每筆成交排行榜")
+    st.subheader("每筆訂單")
     rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(15)
     
     if not rank_df.empty:
