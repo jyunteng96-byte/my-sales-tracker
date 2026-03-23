@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 網頁設定
-st.set_page_config(page_title="TDK 銷售實時cut", layout="centered")
+st.set_page_config(page_title="YUNA台北簽售實時cut", layout="centered")
 
 # 1. 連線到 Google Sheets
 try:
