@@ -55,14 +55,14 @@ if not df.empty:
 
     st.divider()
 
-    # --- B. 排行榜 (加入排名序號) ---
-    st.subheader("每筆訂單")
+    # --- B. 排行榜 (顯示全部訂單) ---
+    st.subheader("每筆訂單總排行")
     
-    # 篩選掉 0 的成交，按銷量排序取前 15 名
-    rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).head(15).copy()
+    # 💡 移除 .head(15)，改為顯示所有有效成交紀錄
+    rank_df = clean_df[clean_df['每筆銷量(本次)'] > 0].sort_values(by='每筆銷量(本次)', ascending=False).copy()
     
     if not rank_df.empty:
-        # 💡 新增：重設索引讓它顯示 1, 2, 3... 的排名
+        # 重設索引讓它顯示 1, 2, 3... 的排名
         rank_df = rank_df.reset_index(drop=True)
         rank_df.index = rank_df.index + 1
         rank_df.index.name = "排名"
