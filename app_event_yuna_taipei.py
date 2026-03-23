@@ -39,7 +39,7 @@ if not df.empty:
     clean_df = df.loc[valid_indices].copy()
 
     # --- A. 上方看板 ---
-    st.title("📊 TDK 銷售實時全榜單")
+    st.title("YUNA台北簽售實時cut")
     latest = df.iloc[-1]
     
     c1, c2, c3 = st.columns(3)
