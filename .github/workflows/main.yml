@@ -18,8 +18,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: |
-          pip install requests selenium webdriver-manager
+        run: pip install requests
 
       - name: Run Scraper
         run: python script.py
