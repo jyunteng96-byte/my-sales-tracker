@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# 請確保這是你最新的 Apps Script 網址
 API_URL = "https://script.google.com/macros/s/AKfycbyVJt9fT7WBSbY0AOV07mluUv1bO2GJZ0usyfjtZClvaaSwfOSI3c-Qzn9a9uIYCmhNWQ/exec"
 TARGET_URL = "https://kay-s-cut-0411yuna.streamlit.app/"
 
@@ -23,43 +24,44 @@ def run():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     try:
-        print("🚀 啟動強化版抓取模式...")
+        print("🚀 開始執行深度抓取...")
         driver.get(TARGET_URL)
         
-        # 使用 WebDriverWait 等待特定數據容器出現，而不是死等 30 秒
-        wait = WebDriverWait(driver, 45)
-        print("⏳ 等待 Streamlit 組件渲染...")
+        # 關鍵修改：等待 Streamlit 的主要內容容器出現
+        print("⏳ 等待數據加載中...")
+        wait = WebDriverWait(driver, 60) # 最多等一分鐘
         
-        # 嘗試尋找包含即時變動紀錄的元素
-        time.sleep(20) # 給予基礎緩衝
-        
-        # 獲取渲染後的完整 HTML 內容
-        html_content = driver.page_source
-        
-        # 修改正則表達式，適應可能存在的 HTML 標籤干擾
-        # 這裡針對 [16:04:01] +20 (總銷量: 2676) 進行匹配
-        pattern = r"\[(\d{2}:\d{2}:\d{2})\]\s*([+-]\d+)\s*\(總銷量:\s*(\d+)\)"
-        matches = re.findall(pattern, html_content)
-
-        if matches:
-            # 抓取最後一筆紀錄 (即最新的那一行)
-            latest = matches[0]
-            payload = {
-                "time": latest[0],
-                "diff": latest[1].replace("+", ""),
-                "totalSales": latest[2],
-                "stock": 8000 - int(latest[2])
-            }
-            print(f"🎯 成功鎖定數據: {payload}")
+        # 循環檢查頁面內容，直到找到包含 "總銷量" 的文字
+        found = False
+        for i in range(12): # 每 5 秒檢查一次，共檢查一分鐘
+            body_text = driver.find_element(By.TAG_NAME, "body").text
+            # 搜尋格式範例：[16:04:01] +20 (總銷量: 2676)
+            pattern = r"\[(\d{2}:\d{2}:\d{2})\]\s*([+-]\d+)\s*\(總銷量:\s*(\d+)\)"
+            match = re.search(pattern, body_text)
             
-            res = requests.post(API_URL, data=json.dumps(payload), timeout=15)
-            print(f"📡 試算表同步結果: {res.text}")
-        else:
-            print("❌ 關鍵字搜尋失敗。目前網頁上的純文字內容為：")
-            print(driver.find_element(By.TAG_NAME, "body").text[:500])
+            if match:
+                payload = {
+                    "time": match.group(1),
+                    "diff": match.group(2).replace("+", ""),
+                    "totalSales": match.group(3),
+                    "stock": 8000 - int(match.group(3))
+                }
+                print(f"🎯 成功鎖定數據: {payload}")
+                
+                # 傳送資料到 Google 試算表
+                res = requests.post(API_URL, data=json.dumps(payload), timeout=20)
+                print(f"📡 試算表回傳: {res.text}")
+                found = True
+                break
+            else:
+                print(f"第 {i+1} 次嘗試：數據尚未載入，稍候再試...")
+                time.sleep(5)
+
+        if not found:
+            print("❌ 失敗：已等待一分鐘，網頁仍未顯示銷量紀錄。")
 
     except Exception as e:
-        print(f"⚠️ 運行中斷: {e}")
+        print(f"⚠️ 運行出錯: {e}")
     finally:
         driver.quit()
 
