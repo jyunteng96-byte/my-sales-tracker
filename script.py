@@ -4,7 +4,7 @@ import re
 import requests
 
 # 你的 Google Apps Script 網址
-API_URL = "https://script.google.com/macros/s/AKfycbyVJt9fT7WBSbY0AOV07mluUv1bO2GJZ0usyfjtZClvaaSwfOSI3c-Qzn9a9uIYCmhNWQ/exec"
+API_URL = "https://script.google.com/macros/s/AKfycbzxlhIKNZJmOiL5if0LSNGe5rhZgwP3BSRUEDbIjD-psi7qTJBT-BWXC5rC1jqF5y3WPg/exec"
 WS_URL = "wss://kay-s-cut-0411yuna.streamlit.app/_stcore/stream"
 
 def on_message(ws, message):
