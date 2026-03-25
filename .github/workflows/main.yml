@@ -14,6 +14,8 @@ jobs:
         with:
           python-version: '3.9'
       - name: Install dependencies
-        run: pip install requests websocket-client
+        run: |
+          pip install requests playwright
+          playwright install chromium
       - name: Run Scraper
         run: python script.py
