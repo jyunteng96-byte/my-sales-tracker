@@ -1,46 +1,41 @@
-import time
-import json
 import requests
-import re
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
+import json
+import time
 
+# 你的 Google Apps Script 網址
 API_URL = "https://script.google.com/macros/s/AKfycbyVJt9fT7WBSbY0AOV07mluUv1bO2GJZ0usyfjtZClvaaSwfOSI3c-Qzn9a9uIYCmhNWQ/exec"
-TARGET_URL = "https://kay-s-cut-0411yuna.streamlit.app/"
+# Streamlit 網頁背後的真實數據接口 (由網頁原始碼解析得出)
+DATA_URL = "https://kay-s-cut-0411yuna.streamlit.app/~/+/events"
 
 def run():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    # 加入偽裝特徵，讓網頁以為是普通電腦
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    print("🚀 啟動 API 直連模式...")
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': '*/*',
+        'Content-Type': 'text/plain;charset=UTF-8',
+        'Origin': 'https://kay-s-cut-0411yuna.streamlit.app'
+    }
 
     try:
-        print("🚀 啟動深度模擬模式...")
-        driver.get(TARGET_URL)
-        
-        # 增加初始等待時間
-        time.sleep(20) 
-        
-        found = False
-        for i in range(15): # 延長檢查到 15 次
-            # 獲取完整 HTML，這樣連隱藏的數據都能搜到
-            html_source = driver.page_source
-            body_text = driver.find_element(By.TAG_NAME, "body").text
+        # 向 Streamlit 請求最新的狀態快照
+        response = requests.get("https://kay-s-cut-0411yuna.streamlit.app/~/+/healthz")
+        if response.status_code == 200:
+            # 由於 Streamlit 的數據結構較複雜，我們改抓取網頁主要標籤中的快照數據
+            # 如果直接抓取失敗，我們使用最原始的 requests 配合結構化搜索
+            page = requests.get("https://kay-s-cut-0411yuna.streamlit.app/", headers=headers)
+            content = page.text
             
-            # 同時搜尋文字內容與 HTML 原始碼
-            pattern = r"\[(\d{2}:\d{2}:\d{2})\]\s*([+-]\d+)\s*\(總銷量:\s*(\d+)\)"
-            match = re.search(pattern, body_text) or re.search(pattern, html_source)
+            import re
+            # 搜尋格式範例：[16:04:01] +20 (總銷量: 2676)
+            # 這次加上預防轉義字元的處理
+            pattern = r"\\\[(\d{2}:\d{2}:\d{2})\\\]\s*([\+\-]\d+)\s*\(總銷量:\s*(\d+)\)"
+            match = re.search(pattern, content)
             
+            if not match:
+                # 嘗試第二次搜尋 (非轉義格式)
+                pattern = r"\[(\d{2}:\d{2}:\d{2})\]\s*([+-]\d+)\s*\(總銷量:\s*(\d+)\)"
+                match = re.search(pattern, content)
+
             if match:
                 payload = {
                     "time": match.group(1),
@@ -48,26 +43,17 @@ def run():
                     "totalSales": match.group(3),
                     "stock": 8000 - int(match.group(3))
                 }
-                print(f"🎯 成功！抓到數據: {payload}")
+                print(f"🎯 成功獲取 API 數據: {payload}")
                 
-                # 傳送並印出結果
                 res = requests.post(API_URL, data=json.dumps(payload), timeout=20)
-                print(f"📡 試算表同步狀態: {res.text}")
-                found = True
-                break
+                print(f"📡 試算表回應: {res.text}")
             else:
-                # 模擬輕微滾動，觸發 Streamlit 載入
-                driver.execute_script("window.scrollTo(0, 500);")
-                print(f"第 {i+1} 次嘗試：等待數據渲染中...")
-                time.sleep(10) # 每次等 10 秒
-
-        if not found:
-            print("❌ 最終失敗：網頁在雲端環境不顯示數據。")
+                print("❌ 無法在數據流中定位銷量格式。可能是網頁關閉或結構大幅更動。")
+        else:
+            print("❌ 目標伺服器目前無法連線。")
 
     except Exception as e:
-        print(f"⚠️ 異常: {e}")
-    finally:
-        driver.quit()
+        print(f"⚠️ 異常中斷: {e}")
 
 if __name__ == "__main__":
     run()
