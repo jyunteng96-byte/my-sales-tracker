@@ -1,24 +1,19 @@
 name: Yuna Sales Auto Fetch
-
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
-
 jobs:
   fetch_data:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
       - name: Install dependencies
-        run: pip install requests
-
+        run: pip install requests websocket-client
       - name: Run Scraper
         run: python script.py
