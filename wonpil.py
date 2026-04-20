@@ -8,31 +8,32 @@ SHEET_ID = "11UXviXGiGJ33aRss2TdIL5b57vp8jrvqvjclK-TPkY8"
 SHEET_NAME = "工作表1"
 
 def get_data():
-    # 加入時間戳記 t={int(time.time())} 強制跳過 Google 快取，確保讀到 4 月最新數據
+    # 加入隨機參數防止快取舊資料
     encoded_sheet_name = urllib.parse.quote(SHEET_NAME)
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet_name}&t={int(time.time())}"
     
     # 讀取 CSV
     df = pd.read_csv(url)
     
-    # 只取前三欄：時刻、總銷量、變化量
+    # 鎖定前三欄並重新命名
     df = df.iloc[:, :3]
     df.columns = ['時刻', '總銷量', '變化量']
     
-    # 清洗時間格式
+    # 處理時間格式，修正下午/上午字眼
     df['時刻'] = df['時刻'].astype(str).str.replace('下午', ' PM').str.replace('上午', ' AM')
     df['時刻'] = pd.to_datetime(df['時刻'], errors='coerce')
     
-    # 排除日期解析失敗的行 (髒數據)
+    # 移除無法辨識日期的行 (例如標題或測試數據)
     df = df.dropna(subset=['時刻'])
     
-    # 清洗數字格式
+    # 清洗數字數據
     df['變化量'] = pd.to_numeric(df['變化量'].astype(str).str.replace('+', '', regex=False).replace('紀錄更新', '0'), errors='coerce').fillna(0)
     df['總銷量'] = pd.to_numeric(df['總銷量'], errors='coerce').fillna(0)
     
-    # 【核心修正】只保留 4 月份或最近 3 天的資料，剔除 3 月的舊測試數據
-    current_time = pd.Timestamp.now()
-    df = df[df['時刻'] > (current_time - pd.Timedelta(days=3))]
+    # 【關鍵過濾】只顯示「今天之後」的資料，徹底解決 3 月舊數據問題
+    # 使用 2026/04/01 作為門檻值
+    threshold_date = pd.Timestamp('2026-04-01')
+    df = df[df['時刻'] >= threshold_date]
     
     return df.sort_values('時刻')
 
@@ -45,12 +46,13 @@ try:
     if not df.empty:
         latest = df.iloc[-1]
         c1, c2 = st.columns(2)
+        # 顯示最新正確總額
         c1.metric("目前累積總量", f"{int(latest['總銷量'])} 張")
         c2.metric("最後更新時間", latest['時刻'].strftime('%Y/%m/%d %H:%M:%S'))
 
         st.markdown("---")
 
-        # 排行榜：顯示所有購買變動 (變化量 > 0)
+        # 購買量排行：僅顯示有增加且日期正確的紀錄
         all_rank = df[df['變化量'] > 0].sort_values('變化量', ascending=False).copy()
         
         if not all_rank.empty:
@@ -59,16 +61,16 @@ try:
             display_df.columns = ['交易時刻', '當時累積總量', '單次購買量']
             display_df.index += 1
             
-            st.dataframe(display_df, use_container_width=True, height=800)
+            st.dataframe(display_df, use_container_width=True, height=600)
         else:
-            st.info("近 3 天內尚未偵測到新的購買紀錄。")
+            st.info("4 月份目前尚無偵測到購買紀錄。")
             
     else:
-        st.warning("⚠️ 沒找到最近 3 天的數據。請確認試算表內最新一筆資料的時間是否正確。")
+        st.warning("⚠️ 未偵測到 4 月份的有效數據。請確認試算表日期是否正確。")
 
 except Exception as e:
-    st.error("數據解析失敗")
+    st.error("解析異常")
     st.write(f"系統訊息：{e}")
 
-if st.button("手動重新刷新"):
+if st.sidebar.button("手動刷新數據"):
     st.rerun()
